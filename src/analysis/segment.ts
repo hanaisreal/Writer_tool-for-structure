@@ -114,10 +114,12 @@ const fold = (s: string) => s.replace(/[“”]/g, '"').replace(/[‘’]/g, "'"
  * Find a quoted excerpt in the document (quotes from the model may differ in
  * curly quotes, spacing, or case). Falls back to the excerpt's first words.
  */
-export function findInDoc(doc: PMNode, quote: string): { from: number; to: number } | null {
+export function findInDoc(doc: PMNode, quote: string, within?: { from: number; to: number }): { from: number; to: number } | null {
   const blocks: { text: string; pos: number[] }[] = []
   doc.descendants((node, nodePos) => {
     if (!node.isTextblock) return true
+    // Optionally search only blocks overlapping a range (e.g. one paragraph).
+    if (within && (nodePos + node.nodeSize <= within.from || nodePos >= within.to)) return false
     let text = ''
     const pos: number[] = []
     node.forEach((child, offset) => {

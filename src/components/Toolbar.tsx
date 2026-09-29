@@ -179,7 +179,7 @@ export function Toolbar({ editor, zoom, setZoom, onFind, onPrint }: { editor: Ed
       <Btn label="Bold (⌘B)" active={s.bold} onClick={() => chain().toggleBold().run()}><Bold size={16} /></Btn>
       <Btn label="Italic (⌘I)" active={s.italic} onClick={() => chain().toggleItalic().run()}><Italic size={16} /></Btn>
       <Btn label="Underline (⌘U)" active={s.underline} onClick={() => chain().toggleUnderline().run()}><Underline size={16} /></Btn>
-      <Btn label="Strikethrough (⌘⇧X)" active={s.strike} onClick={() => chain().toggleStrike().run()}><Strikethrough size={16} /></Btn>
+      <Btn label="Strikethrough (⌘⇧S)" active={s.strike} onClick={() => chain().toggleStrike().run()}><Strikethrough size={16} /></Btn>
       <ColorButton label="Text color" icon={<Baseline size={16} />} current={s.color ?? '#000000'} noneLabel="Reset" onPick={(c) => (c ? chain().setColor(c).run() : chain().unsetColor().run())} />
       <ColorButton label="Highlight color" icon={<Highlighter size={16} />} current={s.highlight} noneLabel="None" onPick={(c) => (c ? chain().setHighlight({ color: c }).run() : chain().unsetHighlight().run())} />
       <Sep />

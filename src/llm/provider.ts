@@ -4,6 +4,7 @@
 import type Anthropic from '@anthropic-ai/sdk'
 import type OpenAI from 'openai'
 import type { AnalyzeRequest, AnalyzeResponse, EvaluateRequest, EvaluateResponse } from '../../shared/genres'
+import type { CommentsRequest, CommentsResponse } from '../../shared/comments'
 import { keyStore, PROVIDERS, type ProviderId } from './keyStore'
 
 export type Backend = 'server' | 'browser'
@@ -120,4 +121,13 @@ export async function verifyKey(provider: ProviderId, key: string, model: string
     }
     return `Couldn’t reach ${PROVIDERS[provider].host}. Check your connection and try again.`
   }
+}
+
+export async function commentEssay(req: CommentsRequest): Promise<CommentsResponse> {
+  if (backend === 'server') return viaServer('/api/comments', req)
+  const [claude, gpt] = await Promise.all([import('../../shared/claude'), import('./openai')])
+  return inBrowser({
+    anthropic: (c, model) => claude.commentEssay(c, req, { model, effort: 'medium' }),
+    openai: (c, model) => gpt.commentEssay(c, req, model),
+  })
 }

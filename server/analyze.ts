@@ -3,7 +3,8 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import type { AnalyzeRequest, EvaluateRequest } from '../shared/genres.ts'
-import { analyzeParagraph, DEFAULT_MODEL, evaluateEssay, type Effort } from '../shared/claude.ts'
+import type { CommentsRequest } from '../shared/comments.ts'
+import { analyzeParagraph, commentEssay, DEFAULT_MODEL, evaluateEssay, type Effort } from '../shared/claude.ts'
 
 export { RefusedError } from '../shared/claude.ts'
 
@@ -19,4 +20,9 @@ export function analyze(req: AnalyzeRequest) {
 export function evaluate(req: EvaluateRequest) {
   if (!client) throw new Error('LLM not configured')
   return evaluateEssay(client, req, { model: MODEL, effort: (process.env.EVAL_EFFORT ?? 'medium') as Effort })
+}
+
+export function comment(req: CommentsRequest) {
+  if (!client) throw new Error('LLM not configured')
+  return commentEssay(client, req, { model: MODEL, effort: (process.env.EVAL_EFFORT ?? 'medium') as Effort })
 }

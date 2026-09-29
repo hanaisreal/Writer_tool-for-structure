@@ -8,6 +8,8 @@ import { ApiKeyDialog } from './components/ApiKeyDialog'
 import { connectLlm, openKeyDialog } from './llm/connect'
 import { keyStore } from './llm/keyStore'
 import { AnalysisPanel } from './components/AnalysisPanel'
+import { CommentsRail } from './components/CommentsRail'
+import { useCommentPersistence } from './comments/persist'
 import { FindBar } from './components/FindBar'
 import { LoginScreen } from './components/LoginScreen'
 import { MenuBar, type Menu } from './components/MenuBar'
@@ -84,6 +86,7 @@ function Workspace({ me }: { me: MeResponse | null }) {
   const [wordCount, setWordCount] = useState(false)
   const [exporting, setExporting] = useState<ExportKind | null>(null)
   const [keyDialog, setKeyDialog] = useState(false)
+  const [pageEl, setPageEl] = useState<HTMLDivElement | null>(null)
   const { backend } = useSyncExternalStore(store.subscribe, () => store.getSnapshot().status)
   const { key } = useSyncExternalStore(keyStore.subscribe, keyStore.getSnapshot)
 
@@ -120,6 +123,8 @@ function Workspace({ me }: { me: MeResponse | null }) {
     content: initial.html,
     editorProps: { attributes: { class: 'doc', spellcheck: 'true' } },
   })
+
+  useCommentPersistence(editor)
 
   // Autosave to this browser.
   useEffect(() => {
@@ -248,9 +253,12 @@ function Workspace({ me }: { me: MeResponse | null }) {
               }}
             />
           )}
-          <div className="page" style={{ zoom: zoom / 100 }} onMouseDown={(e) => e.target === e.currentTarget && editor.commands.focus('end')}>
-            <EditorContent editor={editor} />
-            <PrintLegend />
+          <div className="page-row">
+            <div className="page" ref={setPageEl} style={{ zoom: zoom / 100 }} onMouseDown={(e) => e.target === e.currentTarget && editor.commands.focus('end')}>
+              <EditorContent editor={editor} />
+              <PrintLegend />
+            </div>
+            <CommentsRail editor={editor} pageEl={pageEl} />
           </div>
           <WordChip editor={editor} onClick={() => setWordCount(true)} />
         </main>
@@ -371,7 +379,7 @@ function buildMenus(
         { label: 'Bold', shortcut: '⌘B', action: () => c().toggleBold().run() },
         { label: 'Italic', shortcut: '⌘I', action: () => c().toggleItalic().run() },
         { label: 'Underline', shortcut: '⌘U', action: () => c().toggleUnderline().run() },
-        { label: 'Strikethrough', shortcut: '⌘⇧X', action: () => c().toggleStrike().run() },
+        { label: 'Strikethrough', shortcut: '⌘⇧S', action: () => c().toggleStrike().run() },
         'sep',
         { label: 'Normal text', shortcut: '⌘⌥0', action: () => c().setParagraph().run() },
         { label: 'Heading 1', shortcut: '⌘⌥1', action: () => c().setHeading({ level: 1 }).run() },

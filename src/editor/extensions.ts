@@ -5,6 +5,7 @@ import { TextStyleKit } from '@tiptap/extension-text-style'
 import { CharacterCount, Placeholder } from '@tiptap/extensions'
 import StarterKit from '@tiptap/starter-kit'
 import { TensionHighlight } from '../analysis/highlight'
+import { Comments } from '../comments/plugin'
 import { FindReplace } from './findReplace'
 
 export const FONTS = ['Arial', 'Georgia', 'Times New Roman', 'Merriweather', 'Lora', 'Roboto', 'Verdana', 'Courier New']
@@ -24,4 +25,5 @@ export const extensions: Extensions = [
   Placeholder.configure({ placeholder: 'Start writing your essay…' }),
   FindReplace,
   TensionHighlight,
+  Comments,
 ]

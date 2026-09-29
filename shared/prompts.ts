@@ -15,6 +15,8 @@ import {
   type EvaluateResponse,
   type SegmentRole,
 } from './genres.ts'
+import { COMMENT_CATEGORIES, COMMENT_CATEGORY_IDS, type CommentCategoryId, type CommentsRequest, type CommentsResponse, type DraftComment } from './comments.ts'
+import { getRubric } from './rubrics.ts'
 
 export class RefusedError extends Error {}
 
@@ -90,59 +92,118 @@ export function normalizeAnalysis(parsed: z.infer<typeof Analysis>, req: Analyze
   }
 }
 
-// ---- Whole-essay evaluation ----
+// ---- Whole-essay evaluation (concise, rubric-based) ----
 
 export const Evaluation = z.object({
-  overall: z.number(),
   summary: z.string(),
-  rubric: z.array(z.object({ id: z.string(), score: z.number(), comment: z.string() })),
-  balance: z.string(),
-  suggestions: z.array(z.object({ priority: z.string(), title: z.string(), detail: z.string(), quote: z.string() })),
+  scores: z.array(z.object({ id: z.string(), score: z.number(), reason: z.string() })),
+  nextSteps: z.array(z.object({ title: z.string(), detail: z.string(), quote: z.string() })),
 })
 
-export function evaluateSystem(genreId: string) {
-  const g = getGenre(genreId)
-  const rubric = g.rubric.map((r) => `- ${r.id} (${r.label}): ${r.rubric}`).join('\n')
-  const bands = Object.entries(g.balance)
-    .map(([role, [lo, hi]]) => `${role} ${Math.round(lo * 100)}–${Math.round(hi * 100)}%`)
-    .join(', ')
-  return `You are a demanding, constructive writing teacher grading a piece for its author, who wants dense, tight writing with well-placed tension and surprise.
+const essayBlock = (title: string, paragraphs: string[]) =>
+  `<essay title="${title.replace(/"/g, "'")}">
+${paragraphs.map((p, i) => `[P${i + 1}] ${p}`).join('\n\n')}
+</essay>`
+
+export function evaluateSystem(req: EvaluateRequest) {
+  const g = getGenre(req.genre)
+  const r = getRubric(req.rubric)
+  const criteria = r.criteria.map((c) => `- ${c.id} (${c.label}, ${c.min}–${c.max}): ${c.descriptor}`).join('\n')
+  return `You are an experienced examiner grading a piece of writing against an established rubric: ${r.source}.
 
 ${g.framing}
 
-Score each rubric criterion 0–10 (5 = competent, 7 = strong, 9 = exceptional; use decimals sparingly). Then give an overall score 0–100 that reflects how well the piece works as a whole — not a mechanical average.
-Rubric (use exactly these ids):
-${rubric}
+Score each criterion on its own scale, as a trained examiner applying this rubric would — neither generous nor harsh. ${r.step < 1 ? 'Half points are allowed.' : 'Use whole numbers.'}
+Criteria (use exactly these ids):
+${criteria}
 
-You will also get the share of words the essay spends on each argument role ("none" = text with no argumentative job). Healthy ranges: ${bands}. In "balance", say in 1–2 sentences what the proportions reveal and what to shift.
+For each criterion, "reason" is one sentence (at most 20 words) naming the specific feature of this essay that decided the score.
 
-summary: 2–3 sentences — the essay's main strength and its single biggest problem.
+summary: at most two sentences — the essay's main strength and its single biggest problem.
 
-suggestions: 3–6 concrete revisions, ordered by how much they would improve the essay. priority is "high", "medium", or "low". title is an imperative under 10 words. detail explains what to change and why, specifically for this essay. quote is a short verbatim excerpt (5–20 words, copied exactly) marking where to make the change.`
+nextSteps: exactly three revisions that would raise the score most, highest impact first. Prioritize higher-order concerns (thesis, argument, structure) over sentence-level ones unless the latter truly dominate. title is an imperative under 10 words; detail says concretely what to change and why, for this essay; quote is a short verbatim excerpt (5–20 words, copied exactly) marking where to start.`
 }
 
 export function evaluateUser(req: EvaluateRequest) {
-  const essay = req.paragraphs.map((p, i) => `[P${i + 1}] ${p}`).join('\n\n')
-  const share = Object.entries(req.roleShare)
-    .map(([role, v]) => `${role} ${Math.round((v ?? 0) * 100)}%`)
-    .join(', ')
-  return `<essay title="${req.title.replace(/"/g, "'")}">
-${essay}
-</essay>
-
-Word share by role: ${share || 'unavailable'}`
+  return essayBlock(req.title, req.paragraphs)
 }
 
 export function normalizeEvaluation(r: z.infer<typeof Evaluation>, req: EvaluateRequest): EvaluateResponse {
-  const known = new Set(getGenre(req.genre).rubric.map((c) => c.id))
+  const rubric = getRubric(req.rubric)
+  const byId = new Map(rubric.criteria.map((c) => [c.id, c]))
   return {
-    overall: clamp(r.overall, 0, 100),
+    rubric: rubric.id,
     summary: r.summary,
-    rubric: r.rubric.filter((c) => known.has(c.id)).map((c) => ({ ...c, score: clamp(c.score, 0, 10) })),
-    balance: r.balance,
-    suggestions: r.suggestions.map((s) => ({
-      ...s,
-      priority: s.priority === 'high' || s.priority === 'low' ? s.priority : 'medium',
-    })),
+    scores: r.scores
+      .filter((s) => byId.has(s.id))
+      .map((s) => {
+        const c = byId.get(s.id)!
+        return { ...s, score: clamp(Math.round(s.score / rubric.step) * rubric.step, c.min, c.max) }
+      }),
+    nextSteps: r.nextSteps.slice(0, 3),
   }
+}
+
+// ---- Inline comments ----
+
+export const Comments = z.object({
+  comments: z.array(
+    z.object({
+      category: z.string(),
+      scope: z.string(),
+      priority: z.string(),
+      paragraph: z.number(),
+      quote: z.string(),
+      message: z.string(),
+      nextStep: z.string(),
+      suggestion: z.string(),
+    }),
+  ),
+})
+
+export function commentsSystem(req: CommentsRequest) {
+  const g = getGenre(req.genre)
+  const cats = COMMENT_CATEGORIES.map((c) => `- ${c.id}: ${c.hint}`).join('\n')
+  return `You are a writing tutor leaving margin comments on a draft, the way a skilled teacher would in a shared document.
+
+${g.framing}
+
+Leave at most ${req.maxComments} comments — fewer is better. Research on writing feedback finds that a few prioritized comments help writers far more than many; comment only where it would clearly change the draft, and skip anything minor. Address higher-order concerns (structure, argument) before sentence-level ones. Include one or two "praise" comments for things the writer should keep doing, if deserved.
+
+Each comment:
+- category (use exactly these ids):
+${cats}
+- scope: "word" for a word or short phrase, "sentence" for one sentence, "paragraph" for a whole paragraph.
+- priority: "high", "medium", or "low".
+- paragraph: the paragraph number shown as [P#], starting at 1.
+- quote: the exact anchor text, copied verbatim from that paragraph — the word/phrase, the full sentence, or for paragraph scope the paragraph's first 6–10 words.
+- message: one or two sentences — what you notice and why it matters to a reader. Specific to this text; never generic.
+- nextStep: one sentence — the concrete thing to do next.
+- suggestion: a drop-in replacement for the quote when a rewrite is the clearest help (word or sentence scope only); otherwise an empty string. Keep the writer's voice.`
+}
+
+export function commentsUser(req: CommentsRequest) {
+  return essayBlock(req.title, req.paragraphs)
+}
+
+const PRIORITIES = ['high', 'medium', 'low'] as const
+const SCOPES = ['word', 'sentence', 'paragraph'] as const
+
+export function normalizeComments(r: z.infer<typeof Comments>, req: CommentsRequest): CommentsResponse {
+  const comments: DraftComment[] = []
+  for (const c of r.comments) {
+    if (!(COMMENT_CATEGORY_IDS as string[]).includes(c.category) || !c.quote.trim() || !c.message.trim()) continue
+    const scope = (SCOPES as readonly string[]).includes(c.scope) ? (c.scope as DraftComment['scope']) : 'sentence'
+    comments.push({
+      category: c.category as CommentCategoryId,
+      scope,
+      priority: (PRIORITIES as readonly string[]).includes(c.priority) ? (c.priority as DraftComment['priority']) : 'medium',
+      paragraph: clamp(Math.round(c.paragraph) - 1, 0, Math.max(0, req.paragraphs.length - 1)),
+      quote: c.quote.trim(),
+      message: c.message.trim(),
+      nextStep: c.nextStep.trim(),
+      suggestion: scope === 'paragraph' ? '' : c.suggestion.trim(),
+    })
+  }
+  return { comments: comments.slice(0, req.maxComments) }
 }

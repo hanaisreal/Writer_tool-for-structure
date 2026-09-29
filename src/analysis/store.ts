@@ -2,6 +2,7 @@
 // subscribe/getSnapshot so React (useSyncExternalStore) and the ProseMirror
 // decoration plugin can both read it without a state library.
 
+import type { CommentCategoryId } from '../../shared/comments'
 import { AXIS_IDS, ROLE_IDS, type AxisId, type EvaluateResponse, type RoleId, type RoleSegment, type SentenceScores } from '../../shared/genres'
 
 export type Mode = 'off' | 'tension' | 'argument'
@@ -33,6 +34,13 @@ export interface ViewSettings {
   threshold: number
   /** Argument: spans whose role strength is below this stay unpainted (0..1). */
   roleThreshold: number
+  /** Inline comments: shown at all, and which categories. */
+  showComments: boolean
+  commentCats: Partial<Record<CommentCategoryId, boolean>>
+  /** Established rubric the Score tab grades against. */
+  rubric: string
+  /** How many comments to ask for: a few prioritized ones, or a thorough pass. */
+  commentAmount: 'focused' | 'thorough'
 }
 
 export interface Status {
@@ -76,6 +84,10 @@ function loadView(): ViewSettings {
     relative: true,
     threshold: 0.75,
     roleThreshold: 0.4,
+    showComments: true,
+    commentCats: {},
+    rubric: 'ap-lang-argument',
+    commentAmount: 'focused',
   }
   try {
     const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? 'null')

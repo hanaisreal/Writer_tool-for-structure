@@ -5,8 +5,13 @@
 import type OpenAI from 'openai'
 import { zodTextFormat } from 'openai/helpers/zod'
 import type { AnalyzeRequest, AnalyzeResponse, EvaluateRequest, EvaluateResponse } from '../../shared/genres'
+import type { CommentsRequest, CommentsResponse } from '../../shared/comments'
 import {
   Analysis,
+  Comments,
+  commentsSystem,
+  commentsUser,
+  normalizeComments,
   analyzeSystem,
   analyzeUser,
   Evaluation,
@@ -39,11 +44,23 @@ export async function analyzeParagraph(client: OpenAI, req: AnalyzeRequest, mode
 export async function evaluateEssay(client: OpenAI, req: EvaluateRequest, model: string): Promise<EvaluateResponse> {
   const response = await client.responses.parse({
     model,
-    instructions: evaluateSystem(req.genre),
+    instructions: evaluateSystem(req),
     input: evaluateUser(req),
     text: { format: zodTextFormat(Evaluation, 'essay_evaluation') },
   })
   if (refused(response)) throw new RefusedError('The model declined to evaluate this essay.')
   if (!response.output_parsed) throw new Error(`Could not parse evaluation (status: ${response.status})`)
   return normalizeEvaluation(response.output_parsed, req)
+}
+
+export async function commentEssay(client: OpenAI, req: CommentsRequest, model: string): Promise<CommentsResponse> {
+  const response = await client.responses.parse({
+    model,
+    instructions: commentsSystem(req),
+    input: commentsUser(req),
+    text: { format: zodTextFormat(Comments, 'essay_comments') },
+  })
+  if (refused(response)) throw new RefusedError('The model declined to comment on this essay.')
+  if (!response.output_parsed) throw new Error(`Could not parse comments (status: ${response.status})`)
+  return normalizeComments(response.output_parsed, req)
 }

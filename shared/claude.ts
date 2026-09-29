@@ -5,8 +5,13 @@
 import type Anthropic from '@anthropic-ai/sdk'
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod'
 import type { AnalyzeRequest, AnalyzeResponse, EvaluateRequest, EvaluateResponse } from './genres.ts'
+import type { CommentsRequest, CommentsResponse } from './comments.ts'
 import {
   Analysis,
+  Comments,
+  commentsSystem,
+  commentsUser,
+  normalizeComments,
   analyzeSystem,
   analyzeUser,
   Evaluation,
@@ -49,10 +54,25 @@ export async function evaluateEssay(client: Anthropic, req: EvaluateRequest, opt
     betas: ['server-side-fallback-2026-07-01'],
     fallbacks: 'default',
     output_config: { effort: opts.effort ?? 'medium', format: betaZodOutputFormat(Evaluation) },
-    system: evaluateSystem(req.genre),
+    system: evaluateSystem(req),
     messages: [{ role: 'user', content: evaluateUser(req) }],
   })
   if (response.stop_reason === 'refusal') throw new RefusedError('The model declined to evaluate this essay.')
   if (!response.parsed_output) throw new Error(`Could not parse evaluation (stop_reason: ${response.stop_reason})`)
   return normalizeEvaluation(response.parsed_output, req)
+}
+
+export async function commentEssay(client: Anthropic, req: CommentsRequest, opts: CallOptions = {}): Promise<CommentsResponse> {
+  const response = await client.beta.messages.parse({
+    model: opts.model ?? DEFAULT_MODEL,
+    max_tokens: 16000,
+    betas: ['server-side-fallback-2026-07-01'],
+    fallbacks: 'default',
+    output_config: { effort: opts.effort ?? 'medium', format: betaZodOutputFormat(Comments) },
+    system: commentsSystem(req),
+    messages: [{ role: 'user', content: commentsUser(req) }],
+  })
+  if (response.stop_reason === 'refusal') throw new RefusedError('The model declined to comment on this essay.')
+  if (!response.parsed_output) throw new Error(`Could not parse comments (stop_reason: ${response.stop_reason})`)
+  return normalizeComments(response.parsed_output, req)
 }

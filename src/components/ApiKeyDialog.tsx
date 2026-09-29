@@ -123,7 +123,7 @@ export function ApiKeyDialog({ onClose }: { onClose: () => void }) {
 
       <ul className="key-notes small muted">
         <li>Your key is stored only in this browser and sent only to {info.host} — never to this site.</li>
-        <li>Usage is billed to your {info.label} account: a few short requests per paragraph you edit, and one larger request per Score evaluation.</li>
+        <li>Usage is billed to your {info.label} account: a few short requests per paragraph you edit, and two larger ones each time you run Evaluate & comment.</li>
         <li>With keys for both, the one you save last is used. Don’t use this on a shared computer, or turn off “Remember”.</li>
       </ul>
 

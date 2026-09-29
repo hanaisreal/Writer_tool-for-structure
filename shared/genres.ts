@@ -40,17 +40,10 @@ export interface GenreProfile {
   framing: string
   axes: AxisDef[]
   roles: RoleDef[]
-  /** Criteria for the Score tab; the model scores each 0–10. */
-  rubric: RubricDef[]
   /** Healthy share of the essay's words per role (0..1), for the balance chart. */
   balance: Partial<Record<RoleId | 'none', [number, number]>>
 }
 
-export interface RubricDef {
-  id: string
-  label: string
-  rubric: string
-}
 
 const essayAxes: AxisDef[] = [
   {
@@ -103,17 +96,6 @@ const essayAxes: AxisDef[] = [
     rubric:
       'Emotional direction and strength of the sentence. -1 = strongly negative (alarm, loss, anger); 0 = neutral; 1 = strongly positive (hope, relief, triumph).',
   },
-]
-
-const essayRubric: RubricDef[] = [
-  { id: 'thesis', label: 'Thesis', rubric: 'Is there one clear, arguable, specific central claim, stated early enough to frame the essay?' },
-  { id: 'structure', label: 'Structure', rubric: 'Does each paragraph have one job, do paragraphs build in a deliberate order, and are transitions earned?' },
-  { id: 'evidence', label: 'Evidence', rubric: 'Are claims supported by concrete, credible, well-chosen evidence rather than assertion?' },
-  { id: 'reasoning', label: 'Reasoning', rubric: 'Does analysis actually connect evidence to claims, without leaps, circularity, or unexamined assumptions?' },
-  { id: 'counter', label: 'Counterargument', rubric: 'Is the strongest opposing view stated fairly and answered convincingly?' },
-  { id: 'tension', label: 'Tension & surprise', rubric: 'Does the essay create and sustain intellectual tension — real stakes, open questions, a turn — and place its peak well?' },
-  { id: 'concision', label: 'Concision', rubric: 'Is the prose dense and tight, free of filler, hedging, and repetition?' },
-  { id: 'conclusion', label: 'Conclusion', rubric: 'Does the ending land: resolve the tension, return to the thesis with added weight, and avoid mere summary?' },
 ]
 
 // Word-share bands for a typical argumentative essay. Guides, not rules.
@@ -196,7 +178,6 @@ export const GENRES: GenreProfile[] = [
       'This is an argumentative essay or opinion piece. Tension here is intellectual: the reader is pulled forward by what is at stake, by open questions and unanswered objections, and by claims that overturn their expectations.',
     axes: essayAxes,
     roles: essayRoles,
-    rubric: essayRubric,
     balance: essayBalance,
   },
   {
@@ -206,7 +187,6 @@ export const GENRES: GenreProfile[] = [
     framing: '',
     axes: essayAxes,
     roles: essayRoles,
-    rubric: essayRubric,
     balance: essayBalance,
   },
 ]
@@ -270,20 +250,16 @@ export interface EvaluateRequest {
   genre: string
   title: string
   paragraphs: string[]
-  /** Local balance figures (word share per role) so the model can comment on them. */
-  roleShare: Partial<Record<SegmentRole, number>>
+  /** Which established rubric to grade against (shared/rubrics.ts). */
+  rubric: string
 }
 
+/** Concise, holistic grade; detailed feedback lives in inline comments. */
 export interface EvaluateResponse {
-  overall: number
+  rubric: string
+  /** Two sentences at most: the main strength and the biggest problem. */
   summary: string
-  rubric: { id: string; score: number; comment: string }[]
-  balance: string
-  suggestions: {
-    priority: 'high' | 'medium' | 'low'
-    title: string
-    detail: string
-    /** Verbatim excerpt from the essay, used to jump to the spot. */
-    quote: string
-  }[]
+  scores: { id: string; score: number; reason: string }[]
+  /** The three revisions that would raise the score most, highest first. */
+  nextSteps: { title: string; detail: string; quote: string }[]
 }
