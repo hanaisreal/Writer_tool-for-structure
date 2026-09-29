@@ -21,7 +21,7 @@ import { SAMPLE_HTML, SAMPLE_TITLE } from './editor/sampleDoc'
 
 const DOC_KEY = 'tv.doc.v1'
 
-/** public/sample-analysis.json — Claude's results for the example essay, saved via Tools in dev. */
+/** public/sample-analysis.json — AI results for the example essay, saved via Tools in dev. */
 interface SampleAnalysis {
   genre: string
   results: [string, SentenceResult][]
@@ -45,7 +45,7 @@ function download(name: string, type: string, content: string) {
   URL.revokeObjectURL(url)
 }
 
-/** Static build (GitHub Pages): no server — Claude runs from the browser with the visitor's key. */
+/** Static build (GitHub Pages): no server — the AI is called from the browser with the visitor's key. */
 export const STATIC = import.meta.env.VITE_STATIC === 'true'
 
 export default function App() {
@@ -93,7 +93,7 @@ function Workspace({ me }: { me: MeResponse | null }) {
     return () => window.removeEventListener('tv:open-key', open)
   }, [])
 
-  // The bundled example comes with Claude's analysis baked in, so visitors can
+  // The bundled example can come with AI analysis baked in, so visitors can
   // see real results before adding a key. Results are keyed by sentence text,
   // so they apply wherever those sentences appear.
   useEffect(() => {
@@ -220,7 +220,7 @@ function Workspace({ me }: { me: MeResponse | null }) {
         </div>
         <div className="app-actions">
           {backend !== 'server' && (
-            <button type="button" className="btn btn-key" onClick={() => setKeyDialog(true)} title={key ? 'Claude API key is set' : 'Add your Claude API key'}>
+            <button type="button" className="btn btn-key" onClick={() => setKeyDialog(true)} title={key ? 'API key is set' : 'Add an Anthropic or OpenAI API key'}>
               <KeyRound size={15} />
               <span className={`key-dot${key ? ' is-set' : ''}`} aria-hidden />
               {key ? 'API key' : 'Add API key'}
@@ -386,7 +386,7 @@ function buildMenus(
       items: [
         { label: 'Word count', shortcut: '⌘⇧C', action: () => a.setWordCount(true) },
         { label: 'Re-analyze document', action: () => scheduler.reanalyzeAll(), disabled: store.getSnapshot().status.llm !== 'ready' },
-        { label: 'Claude API key…', action: openKeyDialog },
+        { label: 'API key…', action: openKeyDialog },
         ...(import.meta.env.DEV
           ? [
               'sep' as const,

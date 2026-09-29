@@ -1,4 +1,4 @@
-// Instant, local estimates. These drive the highlights while Claude is still
+// Instant, local estimates. These drive the highlights while the AI is still
 // thinking (and entirely when no LLM is configured), so they must be cheap
 // enough to run on every keystroke for a 2,000-word document.
 

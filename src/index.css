@@ -420,6 +420,30 @@ select {
   align-items: center;
   gap: 8px;
 }
+.provider-tabs {
+  grid-template-columns: 1fr 1fr;
+  margin-bottom: 16px;
+}
+.provider-tabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.tab-check {
+  color: #137333;
+}
+.key-dialog .field-label a {
+  color: var(--accent);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+.model-input {
+  margin-top: 6px;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 13px;
+}
 .key-dialog .field {
   margin-bottom: 14px;
 }

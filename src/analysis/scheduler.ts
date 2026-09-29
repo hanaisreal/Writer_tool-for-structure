@@ -1,10 +1,10 @@
-// Decides what to send to Claude and when. Only paragraphs containing
+// Decides what to send to the AI and when. Only paragraphs containing
 // sentences without a cached result are re-analyzed, a short pause after the
 // last keystroke, a few paragraphs at a time.
 
 import type { Editor } from '@tiptap/core'
 import type { AnalyzeRequest } from '../../shared/genres'
-import { analyzeParagraph, LlmError } from '../llm/provider'
+import { aiName, analyzeParagraph, LlmError } from '../llm/provider'
 import { highlightKey } from './highlight'
 import { hashText } from './segment'
 import { store, type SentenceResult } from './store'
@@ -103,13 +103,14 @@ export class AnalysisScheduler {
 
   private async run(job: Job) {
     try {
+      const by = aiName()
       const data = await analyzeParagraph(job.body)
       const entries: [string, SentenceResult][] = []
       for (const s of data.sentences) {
         const hash = job.ids.get(s.id)
         if (!hash) continue
         const { stakes, uncertainty, surprise, pace, density, valence, segments, note } = s
-        entries.push([hash, { scores: { stakes, uncertainty, surprise, pace, density, valence }, segments, note }])
+        entries.push([hash, { scores: { stakes, uncertainty, surprise, pace, density, valence }, segments, note, by }])
       }
       store.putResults(job.genre, entries)
     } catch (err) {

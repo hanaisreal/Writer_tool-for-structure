@@ -4,7 +4,7 @@ import { AlertTriangle, Check, Minus, Sparkles } from 'lucide-react'
 import { useState, useSyncExternalStore } from 'react'
 import { getGenre, type EvaluateRequest, type SegmentRole } from '../../shared/genres'
 import { openKeyDialog } from '../llm/connect'
-import { evaluateEssay } from '../llm/provider'
+import { aiName, evaluateEssay } from '../llm/provider'
 import { localReport } from '../analysis/evaluate'
 import { highlightKey } from '../analysis/highlight'
 import { getPalette, tint } from '../analysis/palettes'
@@ -41,7 +41,8 @@ export function ScoreTab({ editor, title }: { editor: Editor; title: string }) {
     setError(null)
     try {
       const body: EvaluateRequest = { genre: view.genre, title, paragraphs: seg.paragraphs.map((p) => p.text), roleShare: report.roleShare }
-      store.setEvaluation({ hash: docHash, result: await evaluateEssay(body) })
+      const by = aiName()
+      store.setEvaluation({ hash: docHash, result: await evaluateEssay(body), by })
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -71,17 +72,17 @@ export function ScoreTab({ editor, title }: { editor: Editor; title: string }) {
               <span className="score-word">{scoreWord(ev.overall)}</span>
             </div>
             <p className="score-summary">{ev.summary}</p>
-            {stale && <p className="muted small">The document changed since this evaluation.</p>}
+            <p className="muted small">Graded by {evaluation?.by ?? 'AI'}{stale ? ' · the document changed since this evaluation' : ''}</p>
           </>
         ) : (
-          <p className="muted small">Claude grades the whole essay against a rubric and lists what to fix first.</p>
+          <p className="muted small">The AI grades the whole essay against a rubric and lists what to fix first.</p>
         )}
         <button type="button" className="btn btn-primary" disabled={busy || status.llm !== 'ready'} onClick={evaluate}>
-          <Sparkles size={14} /> {busy ? 'Evaluating…' : ev ? 'Re-evaluate' : 'Evaluate with Claude'}
+          <Sparkles size={14} /> {busy ? 'Evaluating…' : ev ? 'Re-evaluate' : `Evaluate with ${aiName()}`}
         </button>
         {status.llm === 'disabled' && (
           <p className="muted small">
-            <button type="button" className="link-btn" onClick={openKeyDialog}>Add your API key</button> to grade your own writing. The checks below work without it, from local estimates.
+            <button type="button" className="link-btn" onClick={openKeyDialog}>Add an API key</button> to grade your own writing. The checks below work without it, from local estimates.
           </p>
         )}
         {error && <p className="status-error" role="alert">{error}</p>}
@@ -203,7 +204,7 @@ export function ScoreTab({ editor, title }: { editor: Editor; title: string }) {
 
       <p className="muted small">
         {report.words.toLocaleString()} words · {report.sentences} sentences · {report.paragraphs} paragraphs ·{' '}
-        {report.fromClaude === report.sentences ? 'all sentences analyzed by Claude' : `${report.sentences - report.fromClaude} sentences on local estimates`}
+        {report.fromAi === report.sentences ? 'all sentences analyzed by AI' : `${report.sentences - report.fromAi} sentences on local estimates`}
       </p>
     </div>
   )

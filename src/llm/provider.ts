@@ -1,9 +1,10 @@
-// Where Claude requests go: the local dev server (which holds its own key), or
-// straight from this browser with the visitor's key on the static site.
+// Where AI requests go: the local dev server (which holds its own Anthropic
+// key), or straight from this browser with the visitor's Anthropic or OpenAI key.
 
 import type Anthropic from '@anthropic-ai/sdk'
+import type OpenAI from 'openai'
 import type { AnalyzeRequest, AnalyzeResponse, EvaluateRequest, EvaluateResponse } from '../../shared/genres'
-import { keyStore } from './keyStore'
+import { keyStore, PROVIDERS, type ProviderId } from './keyStore'
 
 export type Backend = 'server' | 'browser'
 
@@ -12,6 +13,9 @@ export const setBackend = (b: Backend | null) => {
   backend = b
 }
 export const getBackend = () => backend
+
+/** Name to credit results with: the server always uses Claude. */
+export const aiName = () => (backend === 'server' ? 'Claude' : PROVIDERS[keyStore.getSnapshot().settings.provider].ai)
 
 /** Errors the UI can act on (e.g. prompt for a new key). */
 export class LlmError extends Error {
@@ -22,34 +26,50 @@ export class LlmError extends Error {
   }
 }
 
-let client: { key: string; sdk: Anthropic } | null = null
+const clients: { anthropic?: { key: string; sdk: Anthropic }; openai?: { key: string; sdk: OpenAI } } = {}
 
-async function browserClient(): Promise<Anthropic> {
-  const { key } = keyStore.getSnapshot()
-  if (!key) throw new LlmError('auth', 'Add your Anthropic API key to analyze with Claude.')
-  if (client?.key !== key) {
-    const { default: AnthropicSDK } = await import('@anthropic-ai/sdk')
-    // The key is the visitor's own and stays in their browser; this flag only
-    // acknowledges that the SDK is running client-side.
-    client = { key, sdk: new AnthropicSDK({ apiKey: key, dangerouslyAllowBrowser: true, maxRetries: 2 }) }
+// The keys are the visitor's own and stay in their browser; `dangerouslyAllowBrowser`
+// only acknowledges that each SDK is running client-side.
+async function anthropicClient(key: string): Promise<Anthropic> {
+  if (clients.anthropic?.key !== key) {
+    const { default: SDK } = await import('@anthropic-ai/sdk')
+    clients.anthropic = { key, sdk: new SDK({ apiKey: key, dangerouslyAllowBrowser: true }) }
   }
-  return client.sdk
+  return clients.anthropic.sdk
 }
 
-async function viaBrowser<T>(run: (c: Anthropic, model: string) => Promise<T>): Promise<T> {
-  const c = await browserClient()
-  const { default: AnthropicSDK } = await import('@anthropic-ai/sdk')
-  const { RefusedError } = await import('../../shared/claude')
+async function openaiClient(key: string): Promise<OpenAI> {
+  if (clients.openai?.key !== key) {
+    const { default: SDK } = await import('openai')
+    clients.openai = { key, sdk: new SDK({ apiKey: key, dangerouslyAllowBrowser: true }) }
+  }
+  return clients.openai.sdk
+}
+
+/** Translate either SDK's errors into ones the UI understands. */
+async function toLlmError(provider: ProviderId, err: unknown): Promise<unknown> {
+  const { RefusedError } = await import('../../shared/prompts')
+  if (err instanceof RefusedError) return new LlmError('refused', err.message)
+  const name = PROVIDERS[provider].label
+  const SDK = provider === 'anthropic' ? (await import('@anthropic-ai/sdk')).default : (await import('openai')).default
+  if (err instanceof SDK.AuthenticationError || err instanceof SDK.PermissionDeniedError) {
+    return new LlmError('auth', `Your ${name} API key was rejected. Check it in API key settings.`)
+  }
+  if (err instanceof SDK.RateLimitError) return new LlmError('rate', `Rate limited by the ${name} API — try again shortly.`)
+  if (err instanceof SDK.NotFoundError) return new LlmError('other', `The selected ${name} model isn’t available to this key.`)
+  if (err instanceof SDK.APIError) return new LlmError('other', `${name} API error (${err.status ?? 'network'}).`)
+  return err
+}
+
+async function inBrowser<T>(run: { anthropic: (c: Anthropic, model: string) => Promise<T>; openai: (c: OpenAI, model: string) => Promise<T> }): Promise<T> {
+  const { settings, key } = keyStore.getSnapshot()
+  const provider = settings.provider
+  if (!key) throw new LlmError('auth', 'Add an API key to analyze your own writing.')
+  const model = settings.models[provider]
   try {
-    return await run(c, keyStore.getSnapshot().settings.model)
+    return provider === 'anthropic' ? await run.anthropic(await anthropicClient(key), model) : await run.openai(await openaiClient(key), model)
   } catch (err) {
-    if (err instanceof AnthropicSDK.AuthenticationError || err instanceof AnthropicSDK.PermissionDeniedError) {
-      throw new LlmError('auth', 'Your API key was rejected. Check it in API key settings.')
-    }
-    if (err instanceof AnthropicSDK.RateLimitError) throw new LlmError('rate', 'Rate limited by the Claude API — try again shortly.')
-    if (err instanceof RefusedError) throw new LlmError('refused', err.message)
-    if (err instanceof AnthropicSDK.APIError) throw new LlmError('other', `Claude API error (${err.status ?? 'network'}).`)
-    throw err
+    throw await toLlmError(provider, err)
   }
 }
 
@@ -64,12 +84,40 @@ async function viaServer<T>(path: string, body: unknown): Promise<T> {
 
 export async function analyzeParagraph(req: AnalyzeRequest): Promise<AnalyzeResponse> {
   if (backend === 'server') return viaServer('/api/analyze', req)
-  const { analyzeParagraph: run } = await import('../../shared/claude')
-  return viaBrowser((c, model) => run(c, req, { model, effort: 'low' }))
+  const [claude, gpt] = await Promise.all([import('../../shared/claude'), import('./openai')])
+  return inBrowser({
+    anthropic: (c, model) => claude.analyzeParagraph(c, req, { model, effort: 'low' }),
+    openai: (c, model) => gpt.analyzeParagraph(c, req, model),
+  })
 }
 
 export async function evaluateEssay(req: EvaluateRequest): Promise<EvaluateResponse> {
   if (backend === 'server') return viaServer('/api/evaluate', req)
-  const { evaluateEssay: run } = await import('../../shared/claude')
-  return viaBrowser((c, model) => run(c, req, { model, effort: 'medium' }))
+  const [claude, gpt] = await Promise.all([import('../../shared/claude'), import('./openai')])
+  return inBrowser({
+    anthropic: (c, model) => claude.evaluateEssay(c, req, { model, effort: 'medium' }),
+    openai: (c, model) => gpt.evaluateEssay(c, req, model),
+  })
+}
+
+/** Check a key (and that the model exists) with a free metadata call before saving it. */
+export async function verifyKey(provider: ProviderId, key: string, model: string): Promise<string | null> {
+  try {
+    // One-off clients without retries, so a bad key fails fast.
+    if (provider === 'anthropic') {
+      const { default: SDK } = await import('@anthropic-ai/sdk')
+      await new SDK({ apiKey: key, dangerouslyAllowBrowser: true, maxRetries: 0 }).models.retrieve(model)
+    } else {
+      const { default: SDK } = await import('openai')
+      await new SDK({ apiKey: key, dangerouslyAllowBrowser: true, maxRetries: 0 }).models.retrieve(model)
+    }
+    return null
+  } catch (err) {
+    const e = await toLlmError(provider, err)
+    if (e instanceof LlmError) {
+      if (e.kind === 'auth') return `${PROVIDERS[provider].label} rejected this key. Check that it was copied completely.`
+      return e.message
+    }
+    return `Couldn’t reach ${PROVIDERS[provider].host}. Check your connection and try again.`
+  }
 }

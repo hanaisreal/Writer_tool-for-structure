@@ -23,14 +23,16 @@ export interface Resolved {
   scores: SentenceScores
   segments: RoleSegment[]
   note: string
-  /** True while showing the local estimate and Claude's answer is still expected. */
+  /** True while showing the local estimate and the AI's answer is still expected. */
   pending: boolean
-  source: 'claude' | 'estimate'
+  source: 'ai' | 'estimate'
+  /** Which AI produced the result, when source is 'ai'. */
+  by?: string
 }
 
 export function resolveSentence(s: Sentence, seg: Segmentation): Resolved {
   const r = store.getResult(s.hash)
-  if (r) return { ...r, pending: false, source: 'claude' }
+  if (r) return { ...r, pending: false, source: 'ai' }
   const count = seg.paragraphs[s.para]?.sentences.length ?? 1
   return {
     scores: heuristicScores(s.text),

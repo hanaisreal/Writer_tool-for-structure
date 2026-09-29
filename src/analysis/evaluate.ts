@@ -24,8 +24,8 @@ export interface LocalReport {
   /** Mean of stakes, uncertainty and surprise per paragraph (0..1). */
   paraTension: { value: number; from: number }[]
   checks: Check[]
-  /** How many sentences have Claude results (vs local estimates). */
-  fromClaude: number
+  /** How many sentences have AI results (vs local estimates). */
+  fromAi: number
 }
 
 const wordCount = (t: string) => t.split(/\s+/).filter(Boolean).length
@@ -151,6 +151,6 @@ export function localReport(seg: Segmentation): LocalReport {
     roleShare,
     paraTension,
     checks,
-    fromClaude: flat.filter(({ r }) => r.source === 'claude').length,
+    fromAi: flat.filter(({ r }) => r.source === 'ai').length,
   }
 }

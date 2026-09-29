@@ -1,5 +1,5 @@
-// Keeps the analysis status in sync with which Claude backend is available:
-// the dev server's own key, or the visitor's key in this browser.
+// Keeps the analysis status in sync with which AI backend is available:
+// the dev server's own Anthropic key, or the visitor's key in this browser.
 
 import { scheduler } from '../analysis/scheduler'
 import { store } from '../analysis/store'

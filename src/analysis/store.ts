@@ -10,6 +10,8 @@ export interface SentenceResult {
   scores: SentenceScores
   segments: RoleSegment[]
   note: string
+  /** Which AI produced it ("Claude", "OpenAI"), for crediting in the UI. */
+  by?: string
 }
 
 export interface ViewSettings {
@@ -40,7 +42,7 @@ export interface Status {
   error: string | null
   /** The last error was an authentication problem the visitor can fix with a key. */
   needsKey: boolean
-  /** Where Claude requests go; null when Claude is unavailable. */
+  /** Where AI requests go; null when no AI is available. */
   backend: 'server' | 'browser' | null
 }
 
@@ -48,12 +50,13 @@ export interface Evaluation {
   /** Hash of the document text it was computed for. */
   hash: string
   result: EvaluateResponse
+  by?: string
 }
 
 interface State {
   view: ViewSettings
   status: Status
-  /** Last whole-essay Score evaluation from Claude. */
+  /** Last whole-essay Score evaluation from the AI. */
   evaluation: Evaluation | null
   /** Bumped on any results change so subscribers can cheaply detect it. */
   version: number
@@ -92,7 +95,7 @@ class AnalysisStore {
     version: 0,
   }
   private listeners = new Set<() => void>()
-  /** Claude results keyed by `${genre}:${sentenceHash}`. */
+  /** AI results keyed by `${genre}:${sentenceHash}`. */
   private llm = new Map<string, SentenceResult>()
 
   subscribe = (fn: () => void) => {
@@ -137,7 +140,7 @@ class AnalysisStore {
     this.emit({ version: this.state.version + 1 })
   }
 
-  /** Claude results for one genre, as [sentenceHash, result] pairs — used to bake the site example. */
+  /** AI results for one genre, as [sentenceHash, result] pairs — used to bake the site example. */
   exportResults(genre: string): [string, SentenceResult][] {
     const prefix = `${genre}:`
     return [...this.llm].filter(([k]) => k.startsWith(prefix)).map(([k, v]) => [k.slice(prefix.length), v])

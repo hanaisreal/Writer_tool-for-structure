@@ -10,6 +10,7 @@ import { scheduler } from '../analysis/scheduler'
 import { store, type Mode } from '../analysis/store'
 import { ScoreTab } from './ScoreTab'
 import { openKeyDialog } from '../llm/connect'
+import { aiName } from '../llm/provider'
 import { PANEL_DEFAULT, PANEL_MIN, panelMax, usePanelWidth } from './usePanelWidth'
 
 function Switch(props: { on: boolean; color: string; label: string; onChange: (on: boolean) => void }) {
@@ -77,10 +78,10 @@ function StatusLine() {
   const { status } = useSyncExternalStore(store.subscribe, store.getSnapshot)
   const busy = status.queued + status.running
   let text: string
-  if (status.llm === 'disabled') text = 'Showing local estimates. Add your API key to analyze your own writing with Claude.'
+  if (status.llm === 'disabled') text = 'Showing local estimates. Add an Anthropic or OpenAI key to analyze your own writing.'
   else if (status.llm === 'unknown') text = 'Connecting…'
-  else if (busy) text = `Claude is reading… ${busy} paragraph${busy > 1 ? 's' : ''} left`
-  else text = 'Up to date with Claude'
+  else if (busy) text = `${aiName()} is reading… ${busy} paragraph${busy > 1 ? 's' : ''} left`
+  else text = `Up to date with ${aiName()}`
   return (
     <div className="status">
       <div className="status-row">
@@ -132,7 +133,7 @@ function CurrentSentence({ editor }: { editor: Editor }) {
     <div className="current">
       <div className="current-head">
         <span className="section-title">This sentence</span>
-        <span className={`source-badge${r.source === 'claude' ? ' is-claude' : ''}`}>{r.source === 'claude' ? 'Claude' : r.pending ? 'Estimate · analyzing' : 'Estimate'}</span>
+        <span className={`source-badge${r.source === 'ai' ? ' is-claude' : ''}`}>{r.source === 'ai' ? (r.by ?? 'AI') : r.pending ? 'Estimate · analyzing' : 'Estimate'}</span>
       </div>
       {view.mode !== 'argument' && (
         <div className="bars">

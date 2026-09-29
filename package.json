@@ -27,6 +27,7 @@
     "dotenv": "^18.0.4",
     "express": "^5.2.1",
     "lucide-react": "^1.48.0",
+    "openai": "^7.23.0",
     "pdfmake": "^0.3.11",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
