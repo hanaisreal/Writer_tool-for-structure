@@ -49,7 +49,7 @@ export function ApiKeyDialog({ onClose }: { onClose: () => void }) {
     <dialog ref={ref} className="dialog key-dialog" onClose={onClose} onClick={(e) => e.target === ref.current && onClose()}>
       <h2><KeyRound size={20} /> Claude API key</h2>
       <p className="small key-lead">
-        The example essay is pre-analyzed. To analyze your own writing with Claude, add your own Anthropic API key. You can create one in the{' '}
+        You can explore the example essay without a key. To analyze your own writing with Claude, add your own Anthropic API key. You can create one in the{' '}
         <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">Anthropic Console</a>.
       </p>
 
