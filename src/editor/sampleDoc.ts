@@ -1,0 +1,12 @@
+// Starter essay so the highlights have something to show on first launch.
+export const SAMPLE_TITLE = 'In Defense of Boredom'
+
+export const SAMPLE_HTML = `
+<h1>In Defense of Boredom</h1>
+<p>Every parent knows the sentence that ends a quiet afternoon: “I’m bored.” We treat it as an emergency, and we reach for a screen, a class, a plan. But boredom is not a problem to be solved. It is the raw material of a mind learning to think for itself, and by eliminating it we are quietly taking something essential away from our children.</p>
+<p>Consider what boredom actually asks of a person. It is an itch without an obvious scratch, a signal that the world is not currently supplying enough meaning. A child who sits with that itch long enough starts to supply the meaning herself: a fort from couch cushions, a story about the neighbor’s cat, a game with rules nobody else understands. For example, in one well-known experiment, adults who first spent fifteen minutes copying numbers from a phone book went on to invent more uses for a pair of plastic cups than those who skipped the dull task. The empty time was not wasted. It was the runway.</p>
+<p>Critics will say this is romanticism. Children today face real pressures, they argue, and every hour spent staring at the ceiling is an hour not spent learning to code, practicing violin, or building a résumé for an admissions office that never sleeps. That argument sounds responsible. It is also exactly backwards. The skills we most want for our children, like curiosity, patience, and the ability to start something without being told, are the very skills that a fully scheduled life never gives them the chance to practice.</p>
+<p>There is a quieter cost, too. A child who is never bored never learns that discomfort passes. She learns instead that every flicker of restlessness deserves an immediate cure, and the most convenient cure is always in her pocket. We are, in effect, training a generation to outsource their attention before they have discovered what it is for.</p>
+<p>None of this means abandoning structure. It means leaving gaps in it on purpose. An unplanned Saturday, a car ride without a tablet, a summer week with nothing on the calendar: these are not failures of parenting. They are invitations.</p>
+<p>So the next time a child announces that she is bored, the kindest response may be the hardest one. Say “good,” and wait to see what she builds.</p>
+`
